@@ -6,12 +6,14 @@ export type GestureState = {
   mode: GestureMode;
   label: string;
   confidence: number;
+  openConfidence: number;
 };
 
 type GestureCallback = (state: GestureState) => void;
 
 const fingerTips = [8, 12, 16, 20];
 const fingerPips = [6, 10, 14, 18];
+const fingerMcps = [5, 9, 13, 17];
 
 export class GestureController {
   private video: HTMLVideoElement;
@@ -19,7 +21,9 @@ export class GestureController {
   private onGesture: GestureCallback;
   private landmarker: HandLandmarker | null = null;
   private lastVideoTime = -1;
-  private stableScore = 0;
+  private fistScore = 0;
+  private openScore = 0;
+  private currentMode: GestureMode = 'gather';
 
   constructor(video: HTMLVideoElement, status: HTMLElement, onGesture: GestureCallback) {
     this.video = video;
@@ -37,6 +41,7 @@ export class GestureController {
     const vision = await FilesetResolver.forVisionTasks(
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm',
     );
+
     this.landmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath:
@@ -45,9 +50,9 @@ export class GestureController {
       },
       runningMode: 'VIDEO',
       numHands: 1,
-      minHandDetectionConfidence: 0.55,
-      minHandPresenceConfidence: 0.55,
-      minTrackingConfidence: 0.5,
+      minHandDetectionConfidence: 0.5,
+      minHandPresenceConfidence: 0.5,
+      minTrackingConfidence: 0.48,
     });
 
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -57,7 +62,7 @@ export class GestureController {
 
     this.video.srcObject = stream;
     await this.video.play();
-    this.status.textContent = '张掌聚拢，握拳发散';
+    this.status.textContent = '握拳发散，张掌聚拢';
     requestAnimationFrame(this.detect);
   }
 
@@ -71,35 +76,64 @@ export class GestureController {
       this.lastVideoTime = this.video.currentTime;
       const result = this.landmarker.detectForVideo(this.video, performance.now());
       const landmarks = result.landmarks[0];
-      const fistConfidence = landmarks ? getFistConfidence(landmarks) : 0;
-      this.stableScore = this.stableScore * 0.78 + fistConfidence * 0.22;
 
-      if (this.stableScore > 0.58) {
-        this.onGesture({ mode: 'burst', label: '发散', confidence: this.stableScore });
+      if (!landmarks) {
+        this.fistScore *= 0.7;
+        this.openScore = this.openScore * 0.7 + 0.3;
+        this.emit('gather', '未检测到手', 1 - this.fistScore, this.openScore);
       } else {
-        this.onGesture({ mode: 'gather', label: landmarks ? '聚拢' : '未检测到手', confidence: 1 - this.stableScore });
+        const scores = getHandScores(landmarks);
+        this.fistScore = this.fistScore * 0.62 + scores.fist * 0.38;
+        this.openScore = this.openScore * 0.62 + scores.open * 0.38;
+
+        const burstThreshold = this.currentMode === 'burst' ? 0.5 : 0.58;
+        const gatherThreshold = this.currentMode === 'burst' ? 0.42 : 0.5;
+
+        if (this.fistScore > burstThreshold && this.fistScore > this.openScore * 0.9) {
+          this.emit('burst', '发散破碎', this.fistScore, this.openScore);
+        } else if (this.openScore > gatherThreshold || this.fistScore < 0.36) {
+          this.emit('gather', '聚拢成形', 1 - this.fistScore, this.openScore);
+        }
       }
     }
 
     requestAnimationFrame(this.detect);
   };
+
+  private emit(mode: GestureMode, label: string, confidence: number, openConfidence: number) {
+    this.currentMode = mode;
+    this.onGesture({ mode, label, confidence, openConfidence });
+  }
 }
 
-function getFistConfidence(landmarks: NormalizedLandmark[]): number {
+function getHandScores(landmarks: NormalizedLandmark[]): { fist: number; open: number } {
   let curled = 0;
+  let extended = 0;
+
   for (let i = 0; i < fingerTips.length; i += 1) {
     const tip = landmarks[fingerTips[i]];
     const pip = landmarks[fingerPips[i]];
-    if (tip.y > pip.y + 0.02) {
-      curled += 1;
-    }
+    const mcp = landmarks[fingerMcps[i]];
+    const extension = distance(tip, mcp);
+    const base = distance(pip, mcp);
+
+    if (tip.y > pip.y + 0.016 || extension < base * 1.05) curled += 1;
+    if (tip.y < pip.y - 0.026 && extension > base * 1.1) extended += 1;
   }
 
   const thumbTip = landmarks[4];
+  const wrist = landmarks[0];
   const indexMcp = landmarks[5];
   const pinkyMcp = landmarks[17];
-  const palmWidth = Math.abs(indexMcp.x - pinkyMcp.x);
-  const thumbFolded = Math.abs(thumbTip.x - indexMcp.x) < palmWidth * 1.15;
-  const raw = (curled + (thumbFolded ? 1 : 0)) / 5;
-  return Math.max(0, Math.min(1, raw));
+  const palmWidth = Math.max(0.001, distance(indexMcp, pinkyMcp));
+  const thumbSpread = distance(thumbTip, wrist) / palmWidth;
+  const thumbFolded = distance(thumbTip, indexMcp) < palmWidth * 0.9;
+
+  const fist = Math.min(1, (curled + (thumbFolded ? 1 : 0)) / 5);
+  const open = Math.min(1, (extended + (thumbSpread > 1.15 ? 1 : 0)) / 5);
+  return { fist, open };
+}
+
+function distance(a: NormalizedLandmark, b: NormalizedLandmark): number {
+  return Math.hypot(a.x - b.x, a.y - b.y, (a.z ?? 0) - (b.z ?? 0));
 }

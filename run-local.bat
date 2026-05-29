@@ -8,4 +8,6 @@ if not exist node_modules (
 )
 
 echo Starting local server...
-call npm run dev
+echo Opening http://127.0.0.1:5173/
+start "" "http://127.0.0.1:5173/"
+call npm run dev -- --port 5173 --host 127.0.0.1

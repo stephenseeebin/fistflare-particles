@@ -3,38 +3,75 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gesture Particle Field</title>
+    <title>Fistflare Particles</title>
   </head>
   <body>
     <div id="app">
       <canvas id="scene"></canvas>
+      <div class="stars" aria-hidden="true"></div>
+      <section class="hero" aria-hidden="true">
+        <h1>Fistflare<br />Particles</h1>
+        <p>握拳发散破碎，张掌或无手聚拢成形。轻量低延迟粒子场，适合现场互动演示。</p>
+      </section>
+
       <aside class="panel" aria-label="粒子控制面板">
         <div class="brand">
           <span class="brand-mark"></span>
           <div>
-            <h1>Gesture Particles</h1>
-            <p id="status">等待摄像头权限</p>
+            <h2>Particle Console</h2>
+            <p id="status">正在准备摄像头</p>
           </div>
+          <button id="fullscreenButton" class="icon-button" type="button" aria-label="切换全屏" title="切换全屏">
+            <span aria-hidden="true">⛶</span>
+          </button>
         </div>
+
         <div class="control-group">
-          <label for="modelSelect">模型</label>
+          <label for="modelSelect">粒子模板</label>
           <select id="modelSelect">
             <option value="heart">爱心</option>
-            <option value="sphere">圆球</option>
-            <option value="saturn">星环</option>
+            <option value="flower">花朵</option>
+            <option value="saturn">土星</option>
+            <option value="firework">烟花</option>
+            <option value="galaxy">宇宙星河</option>
           </select>
         </div>
+
+        <div class="color-grid">
+          <label>
+            主光
+            <input id="primaryColor" type="color" value="#ff4fd8" />
+          </label>
+          <label>
+            辅光
+            <input id="accentColor" type="color" value="#49f2ff" />
+          </label>
+        </div>
+
+        <div class="control-group">
+          <label for="burstPower">发散力度</label>
+          <input id="burstPower" type="range" min="0.7" max="1.8" value="1.15" step="0.05" />
+        </div>
+
+        <div class="control-group">
+          <label for="glowPower">发光强度</label>
+          <input id="glowPower" type="range" min="0.7" max="2.2" value="1.25" step="0.05" />
+        </div>
+
         <div class="gesture-card">
           <div class="gesture-dot" id="gestureDot"></div>
           <div>
-            <strong id="gestureLabel">聚拢</strong>
-            <span>握拳发散，张掌聚拢</span>
+            <strong id="gestureLabel">聚拢成形</strong>
+            <span id="gestureHint">握拳发散，张掌或无手聚拢</span>
           </div>
         </div>
-        <button id="fullscreenButton" class="icon-button" type="button" aria-label="切换全屏" title="切换全屏">
-          <span aria-hidden="true">⛶</span>
-        </button>
+
+        <div class="mini-actions">
+          <button id="calmButton" type="button">聚拢</button>
+          <button id="burstButton" type="button">发散</button>
+        </div>
       </aside>
+
       <video id="camera" playsinline muted></video>
     </div>
     <script type="module" src="/src/main.ts"></script>
