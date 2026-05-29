@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gesture Particle Field</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+      <aside class="panel" aria-label="粒子控制面板">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <div>
+            <h1>Gesture Particles</h1>
+            <p id="status">等待摄像头权限</p>
+          </div>
+        </div>
+        <div class="control-group">
+          <label for="modelSelect">模型</label>
+          <select id="modelSelect">
+            <option value="heart">爱心</option>
+            <option value="sphere">圆球</option>
+            <option value="saturn">星环</option>
+          </select>
+        </div>
+        <div class="gesture-card">
+          <div class="gesture-dot" id="gestureDot"></div>
+          <div>
+            <strong id="gestureLabel">聚拢</strong>
+            <span>握拳发散，张掌聚拢</span>
+          </div>
+        </div>
+        <button id="fullscreenButton" class="icon-button" type="button" aria-label="切换全屏" title="切换全屏">
+          <span aria-hidden="true">⛶</span>
+        </button>
+      </aside>
+      <video id="camera" playsinline muted></video>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
